@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>번지점프 안전성 실험</title>
+<style>
+  :root {
+    --canvas: #ffffff;
+    --parchment: #f5f5f7;
+    --ink: #1d1d1f;
+    --ink-muted: #7a7a7a;
+    --action: #0066cc;
+    --hairline: #e0e0e0;
+    --danger: #d62828;
+    --safe: #1d8a4f;
+    --warning: #d97706;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'S-Core Dream 4 Regular', 'Pretendard', 'Apple SD Gothic Neo',
+                 'Malgun Gothic', sans-serif;
+    background: var(--parchment); color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  body { min-height: 100vh; padding: 32px 16px 48px; }
+  .container { max-width: 1080px; margin: 0 auto; }
+  .topbar {
+    display: flex; align-items: baseline; gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 32px;
+  }
+  .eyebrow {
+    font-family: 'S-Core Dream 6 Bold', sans-serif;
+    font-size: 12px; color: var(--action); letter-spacing: 2px;
+  }
+  .topbar-spacer { flex: 1; }
+  .topbar-meta {
+    font-family: 'S-Core Dream 3 Light', sans-serif;
+    font-size: 12px; color: var(--ink-muted); letter-spacing: 0.5px;
+  }
+  h1 {
+    font-family: 'S-Core Dream 8 Heavy', sans-serif;
+    font-weight: 800; font-size: 40px;
+    letter-spacing: -1.2px; line-height: 1.1;
+    margin: 0 0 8px; color: var(--ink);
+  }
+  .subtitle {
+    font-family: 'S-Core Dream 5 Medium', sans-serif;
+    font-size: 18px; color: var(--ink-muted);
+    letter-spacing: -0.4px; margin-bottom: 32px;
+  }
+  .stage {
+    display: grid; grid-template-columns: 1fr 320px;
+    gap: 24px; align-items: stretch;
+  }
+  @media (max-width: 880px) { .stage { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--canvas);
+    border: 1px solid var(--hairline);
+    border-radius: 12px; padding: 24px;
+  }
+  .canvas-pane { display: flex; flex-direction: column; gap: 16px; }
+  .canvas-wrap {
+    background: linear-gradient(to bottom, #f0f4f8 0%, #f5f5f7 60%, #e8eaee 100%);
+    border-radius: 8px; overflow: hidden; position: relative;
+  }
+  canvas { display: block; width: 100%; height: auto; }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    align-items: center; padding: 16px;
+    background: var(--parchment); border-radius: 8px;
+  }
+  .control-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .control-label {
+    font-family: 'S-Core Dream 6 Bold', sans-serif;
+    font-size: 13px; color: var(--ink); letter-spacing: -0.2px;
+  }
+  .height-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .height-pill {
+    font-family: 'S-Core Dream 6 Bold', sans-serif;
+    font-size: 13px; padding: 8px 14px;
+    border-radius: 999px; border: 1px solid var(--hairline);
+    background: var(--canvas); color: var(--ink);
+    cursor: pointer; transition: all 0.15s ease;
+    letter-spacing: -0.2px;
+  }
+  .height-pill:hover:not(:disabled) {
+    border-color: var(--action); color: var(--action);
+  }
+  .height-pill.active {
+    background: var(--action); color: white; border-color: var(--action);
+  }
+  .height-pill:disabled { opacity: 0.4; cursor: not-allowed; }
+  .start-btn {
+    font-family: 'S-Core Dream 7 ExtraBold', sans-serif;
+    font-size: 14px; padding: 10px 24px;
+    border-radius: 999px; border: none;
+    background: var(--ink); color: white;
+    cursor: pointer; transition: all 0.15s ease;
+    letter-spacing: -0.2px;
+  }
+  .start-btn:hover:not(:disabled) { background: var(--action); }
+  .start-btn:disabled { background: var(--ink-muted); cursor: not-allowed; }
+  .stop-btn {
+    font-family: 'S-Core Dream 6 Bold', sans-serif;
+    font-size: 13px; padding: 9px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: var(--canvas); color: var(--ink);
+    cursor: pointer; transition: all 0.15s ease;
+    letter-spacing: -0.2px; margin-left: auto;
+  }
+  .stop-btn:hover:not(:disabled) {
+    border-color: var(--danger); color: var(--danger);
+  }
+  .stop-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .telemetry { display: flex; flex-direction: column; gap: 16px; }
+  .telemetry h2 {
+    font-family: 'S-Core Dream 7 ExtraBold', sans-serif;
+    font-size: 18px; margin: 0 0 16px;
+    letter-spacing: -0.5px; color: var(--ink);
+  }
+  .stat {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 12px 0; border-bottom: 1px solid var(--hairline);
+  }
+  .stat:last-child { border-bottom: none; }
+  .stat-label {
+    font-family: 'S-Core Dream 5 Medium', sans-serif;
+    font-size: 12px; color: var(--ink-muted); letter-spacing: 0.3px;
+  }
+  .stat-value {
+    font-family: 'S-Core Dream 8 Heavy', sans-serif;
+    font-size: 22px; color: var(--ink); letter-spacing: -0.6px;
+  }
+  .stat-value .unit {
+    font-family: 'S-Core Dream 4 Regular', sans-serif;
+    font-size: 13px; color: var(--ink-muted); margin-left: 4px;
+  }
+  .gauge-track {
+    width: 100%; height: 8px;
+    background: var(--hairline); border-radius: 4px;
+    overflow: hidden; position: relative; margin-top: 6px;
+  }
+  .gauge-fill {
+    height: 100%; background: var(--action);
+    border-radius: 4px;
+    transition: width 0.1s ease, background 0.2s ease;
+  }
+  .gauge-fill.warning { background: var(--warning); }
+  .gauge-fill.danger { background: var(--danger); }
+  .gauge-caption {
+    display: flex; justify-content: space-between;
+    font-family: 'S-Core Dream 3 Light', sans-serif;
+    font-size: 11px; color: var(--ink-muted); margin-top: 4px;
+  }
+  .result {
+    background: var(--canvas);
+    border: 1px solid var(--hairline);
+    border-radius: 12px; padding: 20px 24px;
+    margin-top: 16px;
+    display: flex; align-items: flex-start; gap: 16px;
+  }
+  .result-status {
+    flex-shrink: 0; width: 56px; height: 56px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'S-Core Dream 9 Black', sans-serif;
+    font-size: 28px; color: white;
+    background: var(--ink-muted); letter-spacing: -1px;
+  }
+  .result-status.safe { background: var(--safe); }
+  .result-status.danger { background: var(--danger); }
+  .result-status.warning { background: var(--warning); }
+  .result-body { flex: 1; }
+  .result-title {
+    font-family: 'S-Core Dream 7 ExtraBold', sans-serif;
+    font-size: 18px; margin-bottom: 4px;
+    color: var(--ink); letter-spacing: -0.4px;
+  }
+  .result-detail {
+    font-family: 'S-Core Dream 4 Regular', sans-serif;
+    font-size: 14px; color: var(--ink-muted);
+    line-height: 1.7; letter-spacing: -0.2px;
+  }
+  .result-detail b {
+    font-family: 'S-Core Dream 7 ExtraBold', sans-serif;
+    font-weight: 700; color: var(--action);
+  }
+  .footnote {
+    margin-top: 24px; padding-top: 16px;
+    border-top: 1px solid var(--hairline);
+    font-family: 'S-Core Dream 3 Light', sans-serif;
+    font-size: 11px; color: var(--ink-muted);
+    letter-spacing: -0.2px; line-height: 1.7;
+  }
+  .footnote b {
+    font-family: 'S-Core Dream 5 Medium', sans-serif;
+    color: var(--ink); font-weight: 500;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <span class="eyebrow">UNIT 2 · 운동에 숨겨진 비밀, 에너지</span>
+      <span class="topbar-spacer"></span>
+      <span class="topbar-meta">탐구 시뮬레이션 · 평가기준 B · C</span>
+    </div>
+
+    <h1>번지점프 안전성 실험</h1>
+    <p class="subtitle">낙하 높이가 너무 크면, 줄이 끊어져 사고가 일어날까?</p>
+
+    <div class="stage">
+      <div class="canvas-pane card">
+        <div class="canvas-wrap">
+          <canvas id="simCanvas" width="700" height="540"></canvas>
+        </div>
+        <div class="controls">
+          <div class="control-group">
+            <span class="control-label">낙하 높이</span>
+            <div class="height-pills" id="heightPills">
+              <button class="height-pill" data-h="3">3 m</button>
+              <button class="height-pill" data-h="8">8 m</button>
+              <button class="height-pill active" data-h="15">15 m</button>
+              <button class="height-pill" data-h="22">22 m</button>
+              <button class="height-pill" data-h="30">30 m</button>
+            </div>
+          </div>
+          <button id="stopBtn" class="stop-btn" onclick="stopSimulation()" disabled>정지</button>
+          <button id="startBtn" class="start-btn" onclick="startSimulation()">실험 시작 ↓</button>
+        </div>
+      </div>
+
+      <aside class="telemetry card">
+        <h2>실시간 측정</h2>
+        <div class="stat">
+          <span class="stat-label">현재 속도</span>
+          <span class="stat-value"><span id="velocityVal">0.0</span><span class="unit">m/s</span></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">최대 속력</span>
+          <span class="stat-value"><span id="velocityMaxVal">0.0</span><span class="unit">m/s</span></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">최대 운동에너지</span>
+          <span class="stat-value"><span id="keVal">0</span><span class="unit">J</span></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">줄에 걸리는 최대 장력</span>
+          <span class="stat-value"><span id="tensionVal">0</span><span class="unit">N</span></span>
+          <div class="gauge-track">
+            <div class="gauge-fill" id="tensionGauge" style="width: 0%"></div>
+          </div>
+          <div class="gauge-caption">
+            <span>0</span>
+            <span>줄 한계 <b style="font-family: 'S-Core Dream 6 Bold', sans-serif; color: var(--ink);">3,000 N</b></span>
+          </div>
+        </div>
+        <div class="stat">
+          <span class="stat-label">탑승자 안전 등급</span>
+          <span class="stat-value" id="safetyVal" style="font-size: 18px;">대기 중</span>
+        </div>
+      </aside>
+    </div>
+
+    <div class="result" id="resultBoard">
+      <div class="result-status" id="resultStatus">·</div>
+      <div class="result-body">
+        <div class="result-title" id="resultTitle">실험 준비 완료</div>
+        <div class="result-detail" id="resultDetail">
+          왼쪽에서 <b>낙하 높이</b>를 선택하고 <b>실험 시작</b> 버튼을 누르세요.
+          낙하 높이가 클수록 줄이 늘어나기 시작할 때의 속도가 커지고, 줄이 흡수해야 할 에너지가 늘어 장력도 커집니다.
+        </div>
+      </div>
+    </div>
+
+    <p class="footnote">
+      <b>실험 가정</b>
+      &nbsp;·&nbsp; 탑승자 질량 m = 70 kg
+      &nbsp;·&nbsp; 중력가속도 g = 9.8 m/s²
+      &nbsp;·&nbsp; 번지 줄 탄성 계수 k = 200 N/m
+      &nbsp;·&nbsp; 줄 파단 한계 장력 T_max = 3,000 N
+      &nbsp;·&nbsp; 점프대 높이 50 m
+      &nbsp;·&nbsp; 공기 저항 무시
+      <br>
+      <b>실험 변인</b>
+      &nbsp;·&nbsp; 조작 변인: 낙하 높이(번지 줄 자연 길이) L₀
+      &nbsp;·&nbsp; 종속 변인: 줄 파단 여부, 최대 장력
+      &nbsp;·&nbsp; 통제 변인: 탑승자 질량, 줄의 종류(k), 중력가속도
+    </p>
+  </div>
+
+<script>
+  const PHYS = { m: 70, g: 9.8, k: 200, T_max: 3000, dt: 0.016, H_platform: 50 };
+  const canvas = document.getElementById('simCanvas');
+  const ctx = canvas.getContext('2d');
+  const CW = canvas.width, CH = canvas.height;
+  const PLATFORM_X = 220, PLATFORM_Y = 50;
+  const PX_PER_M = 9;
+  function metersToY(m) { return PLATFORM_Y + m * PX_PER_M; }
+
+  let state = {
+    L0: 15, phase: 'idle',
+    pos: 0, vel: 0,
+    tensionMax: 0, keMax: 0, velMax: 0,
+    broken: false, settleFrames: 0,
+  };
+  let rafId = null;
+
+  const els = {
+    pills: document.querySelectorAll('.height-pill'),
+    startBtn: document.getElementById('startBtn'),
+    stopBtn: document.getElementById('stopBtn'),
+    velocityVal: document.getElementById('velocityVal'),
+    velocityMaxVal: document.getElementById('velocityMaxVal'),
+    keVal: document.getElementById('keVal'),
+    tensionVal: document.getElementById('tensionVal'),
+    tensionGauge: document.getElementById('tensionGauge'),
+    safetyVal: document.getElementById('safetyVal'),
+    resultStatus: document.getElementById('resultStatus'),
+    resultTitle: document.getElementById('resultTitle'),
+    resultDetail: document.getElementById('resultDetail'),
+  };
+
+  els.pills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      if (state.phase === 'falling') return;
+      els.pills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      state.L0 = parseInt(pill.dataset.h, 10);
+      resetIdle();
+    });
+  });
+
+  function resetIdle() {
+    state.phase = 'idle';
+    state.pos = 0; state.vel = 0;
+    state.tensionMax = 0; state.keMax = 0; state.velMax = 0;
+    state.broken = false; state.settleFrames = 0;
+    updateTelemetry(0, 0, 0);
+    setSafetyLabel('대기 중', '');
+    setResult('idle');
+    if (els.stopBtn) els.stopBtn.disabled = true;
+    if (els.startBtn) {
+      els.startBtn.disabled = false;
+      els.startBtn.textContent = '실험 시작 ↓';
+    }
+    draw();
+  }
+
+  function drawTower() {
+    ctx.strokeStyle = '#5b6470'; ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(PLATFORM_X - 50, PLATFORM_Y); ctx.lineTo(PLATFORM_X - 50, CH - 30);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(PLATFORM_X - 18, PLATFORM_Y); ctx.lineTo(PLATFORM_X - 18, CH - 30);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#7e8895'; ctx.lineWidth = 2.5;
+    const segs = 8;
+    for (let i = 0; i < segs; i++) {
+      const yA = PLATFORM_Y + (CH - 30 - PLATFORM_Y) * (i / segs);
+      const yB = PLATFORM_Y + (CH - 30 - PLATFORM_Y) * ((i + 1) / segs);
+      ctx.beginPath();
+      ctx.moveTo(PLATFORM_X - 18, yA); ctx.lineTo(PLATFORM_X - 50, yB);
+      ctx.moveTo(PLATFORM_X - 50, yA); ctx.lineTo(PLATFORM_X - 18, yB);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#3d4451';
+    ctx.fillRect(PLATFORM_X - 50, PLATFORM_Y - 8, 110, 8);
+
+    ctx.strokeStyle = '#3d4451'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(PLATFORM_X - 50, PLATFORM_Y - 8);
+    ctx.lineTo(PLATFORM_X - 50, PLATFORM_Y - 28);
+    ctx.lineTo(PLATFORM_X - 12, PLATFORM_Y - 28);
+    ctx.lineTo(PLATFORM_X - 12, PLATFORM_Y - 8);
+    ctx.stroke();
+
+    ctx.fillStyle = '#0066cc';
+    ctx.font = 'bold 13px "S-Core Dream 7 ExtraBold", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`낙하 높이: ${state.L0} m`, PLATFORM_X + 70, PLATFORM_Y - 14);
+  }
+
+  function drawGround() {
+    const gy = CH - 30;
+    ctx.fillStyle = '#3a3a3c';
+    ctx.fillRect(0, gy, CW, 4);
+    ctx.strokeStyle = '#9a9a9c'; ctx.lineWidth = 1;
+    for (let x = 0; x < CW; x += 14) {
+      ctx.beginPath();
+      ctx.moveTo(x, gy + 4); ctx.lineTo(x + 7, gy + 14);
+      ctx.stroke();
+    }
+  }
+
+  function drawAxis() {
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = '#c7c7cc'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(60, PLATFORM_Y); ctx.lineTo(60, CH - 30);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#7a7a7a';
+    ctx.font = '10px "S-Core Dream 5 Medium", sans-serif';
+    ctx.textAlign = 'right';
+    for (let mm = 0; mm <= 50; mm += 10) {
+      const y = metersToY(mm);
+      if (y > CH - 30) break;
+      ctx.fillText(`${mm}`, 50, y + 3);
+      ctx.beginPath();
+      ctx.strokeStyle = '#c7c7cc';
+      ctx.moveTo(54, y); ctx.lineTo(60, y);
+      ctx.stroke();
+    }
+    ctx.font = '10px "S-Core Dream 3 Light", sans-serif';
+    ctx.fillText('m', 50, PLATFORM_Y - 6);
+
+    const yL0 = metersToY(state.L0);
+    if (yL0 < CH - 30) {
+      ctx.strokeStyle = '#0066cc'; ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(PLATFORM_X + 30, yL0);
+      ctx.lineTo(CW - 30, yL0);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#0066cc';
+      ctx.font = '10px "S-Core Dream 6 Bold", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`L₀ = ${state.L0}m  (자유낙하 끝)`, CW - 35, yL0 - 3);
+    }
+  }
+
+  function drawCord(jumperY, broken) {
+    if (broken) {
+      ctx.strokeStyle = '#999'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(PLATFORM_X, PLATFORM_Y);
+      const midY = PLATFORM_Y + 50;
+      ctx.quadraticCurveTo(PLATFORM_X + 8, midY - 10, PLATFORM_X - 4, midY);
+      ctx.stroke();
+      ctx.fillStyle = '#d62828';
+      ctx.beginPath();
+      ctx.arc(PLATFORM_X - 4, midY, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#d62828'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(PLATFORM_X - 8, midY - 4); ctx.lineTo(PLATFORM_X, midY + 4);
+      ctx.moveTo(PLATFORM_X, midY - 4); ctx.lineTo(PLATFORM_X - 8, midY + 4);
+      ctx.stroke();
+      return;
+    }
+    const stretched = state.pos > state.L0;
+    if (!stretched) {
+      ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(PLATFORM_X, PLATFORM_Y);
+      const midY = (PLATFORM_Y + jumperY) / 2;
+      ctx.quadraticCurveTo(PLATFORM_X + 8, midY + 8, PLATFORM_X, jumperY);
+      ctx.stroke();
+    } else {
+      const ratio = state.tensionMax / PHYS.T_max;
+      let color = '#0066cc';
+      if (ratio > 0.95) color = '#d62828';
+      else if (ratio > 0.7) color = '#d97706';
+      ctx.strokeStyle = color; ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(PLATFORM_X, PLATFORM_Y); ctx.lineTo(PLATFORM_X, jumperY);
+      ctx.stroke();
+    }
+  }
+
+  function drawJumper(x, y, mood) {
+    ctx.fillStyle = '#0066cc';
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#1d1d1f'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+
+    if (mood === 'standing') {
+      ctx.beginPath();
+      ctx.moveTo(x - 6, y + 2); ctx.lineTo(x - 6, y + 10);
+      ctx.moveTo(x + 6, y + 2); ctx.lineTo(x + 6, y + 10);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x - 4, y + 8); ctx.lineTo(x - 6, y + 18);
+      ctx.moveTo(x + 4, y + 8); ctx.lineTo(x + 6, y + 18);
+      ctx.stroke();
+    } else if (mood === 'falling') {
+      ctx.beginPath();
+      ctx.moveTo(x - 8, y - 2); ctx.lineTo(x - 18, y + 6);
+      ctx.moveTo(x + 8, y - 2); ctx.lineTo(x + 18, y + 6);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x - 4, y + 8); ctx.lineTo(x - 8, y + 16);
+      ctx.moveTo(x + 4, y + 8); ctx.lineTo(x + 8, y + 16);
+      ctx.stroke();
+    } else if (mood === 'tense') {
+      ctx.beginPath();
+      ctx.moveTo(x - 6, y); ctx.lineTo(x - 12, y + 8);
+      ctx.moveTo(x + 6, y); ctx.lineTo(x + 12, y + 8);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x - 4, y + 8); ctx.lineTo(x - 6, y + 18);
+      ctx.moveTo(x + 4, y + 8); ctx.lineTo(x + 6, y + 18);
+      ctx.stroke();
+    } else if (mood === 'broken') {
+      ctx.beginPath();
+      ctx.moveTo(x - 10, y - 2); ctx.lineTo(x - 18, y + 4);
+      ctx.moveTo(x + 10, y - 2); ctx.lineTo(x + 18, y + 4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x - 4, y + 8); ctx.lineTo(x - 8, y + 16);
+      ctx.moveTo(x + 4, y + 8); ctx.lineTo(x + 8, y + 16);
+      ctx.stroke();
+      ctx.fillStyle = '#d62828';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('!', x + 22, y - 6);
+    }
+    ctx.fillStyle = '#1d1d1f';
+    ctx.fillRect(x - 5, y + 16, 10, 4);
+  }
+
+  function drawClouds() {
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.beginPath();
+    ctx.arc(540, 60, 16, 0, Math.PI * 2);
+    ctx.arc(560, 60, 20, 0, Math.PI * 2);
+    ctx.arc(580, 62, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(420, 110, 12, 0, Math.PI * 2);
+    ctx.arc(438, 110, 16, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, CW, CH);
+    drawClouds();
+    drawAxis();
+    drawTower();
+    drawGround();
+    if (state.phase === 'idle') {
+      drawJumper(PLATFORM_X, PLATFORM_Y - 18, 'standing');
+      return;
+    }
+    const jumperY = metersToY(state.pos);
+    if (state.broken) {
+      drawCord(0, true);
+      const groundY = CH - 30;
+      const py = Math.min(jumperY, groundY - 18);
+      drawJumper(PLATFORM_X, py, 'broken');
+      return;
+    }
+    drawCord(jumperY, false);
+    const stretched = state.pos > state.L0;
+    drawJumper(PLATFORM_X, jumperY, stretched ? 'tense' : 'falling');
+  }
+
+  function step() {
+    const { m, g, k, dt, T_max } = PHYS;
+    const L0 = state.L0;
+    if (state.broken) {
+      state.vel += g * dt;
+      state.pos += state.vel * dt;
+      if (state.pos >= PHYS.H_platform - 1) {
+        state.pos = PHYS.H_platform - 1;
+        state.vel = 0; state.phase = 'failed';
+      }
+      return;
+    }
+    let force = m * g;
+    let tension = 0;
+    if (state.pos > L0) {
+      tension = k * (state.pos - L0);
+      force -= tension;
+    }
+    state.vel += (force / m) * dt;
+    state.pos += state.vel * dt;
+    if (Math.abs(state.vel) > state.velMax) {
+      state.velMax = Math.abs(state.vel);
+      state.keMax = 0.5 * m * state.vel * state.vel;
+    }
+    if (tension > state.tensionMax) state.tensionMax = tension;
+    if (tension >= T_max && !state.broken) {
+      state.broken = true;
+      return;
+    }
+    if (state.pos < 0 && state.vel < 0) {
+      state.pos = 0; state.vel = 0;
+    }
+    if (state.pos > L0 && Math.abs(state.vel) < 0.15) {
+      state.settleFrames++;
+      if (state.settleFrames > 60) state.phase = 'settled';
+    } else {
+      state.settleFrames = 0;
+    }
+  }
+
+  function updateTelemetry(velocity, ke, tension) {
+    els.velocityVal.textContent = Math.abs(velocity).toFixed(1);
+    els.velocityMaxVal.textContent = state.velMax.toFixed(1);
+    els.keVal.textContent = Math.round(ke).toLocaleString();
+    els.tensionVal.textContent = Math.round(tension).toLocaleString();
+    const ratio = Math.min(1, tension / PHYS.T_max);
+    els.tensionGauge.style.width = (ratio * 100) + '%';
+    els.tensionGauge.classList.remove('warning', 'danger');
+    if (ratio > 0.95) els.tensionGauge.classList.add('danger');
+    else if (ratio > 0.7) els.tensionGauge.classList.add('warning');
+  }
+
+  function setSafetyLabel(text, kind) {
+    els.safetyVal.textContent = text;
+    const palette = { safe: 'var(--safe)', warning: 'var(--warning)',
+                      danger: 'var(--danger)', '': 'var(--ink)' };
+    els.safetyVal.style.color = palette[kind] || 'var(--ink)';
+  }
+
+  function setResult(kind) {
+    const map = {
+      idle: { c: '', s: '·', t: '실험 준비 완료',
+        d: '왼쪽에서 <b>낙하 높이</b>를 선택하고 <b>실험 시작</b> 버튼을 누르세요. 낙하 높이가 클수록 줄이 늘어나기 시작할 때의 속도가 커지고, 줄이 흡수해야 할 에너지가 늘어 장력도 커집니다.' },
+      running: { c: '', s: '↓', t: '실험 진행 중',
+        d: '낙하 → 줄이 늘어나며 감속 → 최저점 도달 순으로 진행됩니다. 우측 측정판에서 <b>최대 장력</b>이 줄의 한계를 넘는지 관찰하세요.' },
+    };
+    const cfg = map[kind] || map.idle;
+    els.resultStatus.className = 'result-status ' + cfg.c;
+    els.resultStatus.textContent = cfg.s;
+    els.resultTitle.textContent = cfg.t;
+    els.resultDetail.innerHTML = cfg.d;
+  }
+
+  function evaluateOutcome() {
+    const T = state.tensionMax;
+    const KE = state.keMax;
+    const ratio = T / PHYS.T_max;
+
+    if (state.broken) {
+      els.resultStatus.className = 'result-status danger';
+      els.resultStatus.textContent = 'X';
+      els.resultTitle.textContent = '줄 파단 — 실험 실패';
+      els.resultDetail.innerHTML =
+        `낙하 높이 <b>${state.L0} m</b>에서 줄이 흡수해야 할 에너지가 한계를 초과했습니다.` +
+        `<br>· 최대 속력 ≈ <b>${state.velMax.toFixed(1)} m/s</b>` +
+        `<br>· 최대 운동에너지 ≈ <b>${Math.round(KE).toLocaleString()} J</b>` +
+        `<br>· 줄 파단 직전 장력 ≈ <b>${Math.round(T).toLocaleString()} N</b>` +
+        `<br><br>낙하 높이를 줄이거나, 더 굵고 강한 줄(높은 k 또는 높은 T_max)을 사용해 안전 마진을 확보해야 합니다.`;
+      setSafetyLabel('파단 — 위험', 'danger');
+      return;
+    }
+
+    if (ratio < 0.7) {
+      els.resultStatus.className = 'result-status safe';
+      els.resultStatus.textContent = 'O';
+      els.resultTitle.textContent = '안전 통과';
+      els.resultDetail.innerHTML =
+        `낙하 높이 <b>${state.L0} m</b>에서 최대 속력 ≈ <b>${state.velMax.toFixed(1)} m/s</b>, ` +
+        `최대 운동에너지 ≈ <b>${Math.round(KE).toLocaleString()} J</b>, ` +
+        `최대 장력 ≈ <b>${Math.round(T).toLocaleString()} N</b>으로 줄의 한계 ${PHYS.T_max} N 대비 안전 마진이 충분합니다.` +
+        `<br>위치에너지가 운동에너지로, 다시 줄의 탄성에너지로 안전하게 전환되었습니다.`;
+      setSafetyLabel('안전 — 통과', 'safe');
+    } else if (ratio < 0.95) {
+      els.resultStatus.className = 'result-status warning';
+      els.resultStatus.textContent = '△';
+      els.resultTitle.textContent = '주의 필요';
+      els.resultDetail.innerHTML =
+        `낙하 높이 <b>${state.L0} m</b>에서 최대 속력 ≈ <b>${state.velMax.toFixed(1)} m/s</b>, ` +
+        `최대 장력 ≈ <b>${Math.round(T).toLocaleString()} N</b>으로 줄의 한계의 ${Math.round(ratio*100)}%에 도달했습니다. ` +
+        `이번에는 통과했지만 안전 여유가 부족합니다.`;
+      setSafetyLabel('주의 — 여유 부족', 'warning');
+    } else {
+      els.resultStatus.className = 'result-status warning';
+      els.resultStatus.textContent = '△';
+      els.resultTitle.textContent = '한계 임박';
+      els.resultDetail.innerHTML =
+        `최대 속력 ≈ <b>${state.velMax.toFixed(1)} m/s</b>, ` +
+        `최대 장력 ≈ <b>${Math.round(T).toLocaleString()} N</b>으로 줄의 한계에 매우 근접했습니다. ` +
+        `반복 사용 시 피로 누적으로 파단 위험이 큽니다.`;
+      setSafetyLabel('한계 임박', 'danger');
+    }
+  }
+
+  function tick() {
+    step();
+    let tensionNow = 0;
+    if (!state.broken && state.pos > state.L0) {
+      tensionNow = PHYS.k * (state.pos - state.L0);
+    }
+    const keNow = 0.5 * PHYS.m * state.vel * state.vel;
+    updateTelemetry(state.vel, keNow, Math.max(tensionNow, state.tensionMax));
+    draw();
+    if (state.phase === 'failed' || state.phase === 'settled') {
+      evaluateOutcome();
+      els.startBtn.disabled = false;
+      els.startBtn.textContent = '다시 시도 ↻';
+      els.stopBtn.disabled = true;
+      els.pills.forEach(p => p.disabled = false);
+      return;
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function startSimulation() {
+    if (state.phase === 'falling') return;
+    cancelAnimationFrame(rafId);
+    state.phase = 'falling';
+    state.pos = 0; state.vel = 0;
+    state.tensionMax = 0; state.keMax = 0; state.velMax = 0;
+    state.broken = false; state.settleFrames = 0;
+    els.startBtn.disabled = true;
+    els.startBtn.textContent = '진행 중…';
+    els.stopBtn.disabled = false;
+    els.pills.forEach(p => p.disabled = true);
+    setResult('running');
+    setSafetyLabel('측정 중', '');
+    tick();
+  }
+
+  function stopSimulation() {
+    if (state.phase !== 'falling') return;
+    cancelAnimationFrame(rafId);
+    // 정지를 settled로 처리 — 그 시점까지의 측정값으로 평가
+    state.phase = 'settled';
+    evaluateOutcome();
+    els.startBtn.disabled = false;
+    els.startBtn.textContent = '다시 시도 ↻';
+    els.stopBtn.disabled = true;
+    els.pills.forEach(p => p.disabled = false);
+  }
+
+  resetIdle();
+</script>
+</body>
+</html>
