@@ -250,7 +250,7 @@
           <span class="stat-value"><span id="keVal">0</span><span class="unit">J</span></span>
         </div>
         <div class="stat">
-          <span class="stat-label">줄에 걸리는 최대 장력</span>
+          <span class="stat-label">줄이 물체를 잡아당기는 힘의 최대치</span>
           <span class="stat-value"><span id="tensionVal">0</span><span class="unit">N</span></span>
           <div class="gauge-track">
             <div class="gauge-fill" id="tensionGauge" style="width: 0%"></div>
@@ -273,7 +273,7 @@
         <div class="result-title" id="resultTitle">실험 준비 완료</div>
         <div class="result-detail" id="resultDetail">
           왼쪽에서 <b>낙하 높이</b>를 선택하고 <b>실험 시작</b> 버튼을 누르세요.
-          낙하 높이가 클수록 줄이 늘어나기 시작할 때의 속도가 커지고, 줄이 흡수해야 할 에너지가 늘어 장력도 커집니다.
+          낙하 높이가 클수록 줄이 늘어나기 시작할 때의 속도가 커지고, 줄이 흡수해야 할 에너지가 늘어 줄이 물체를 잡아당기는 힘도 커집니다.
         </div>
       </div>
     </div>
@@ -283,13 +283,13 @@
       &nbsp;·&nbsp; 탑승자 질량 m = 70 kg
       &nbsp;·&nbsp; 중력가속도 g = 9.8 m/s²
       &nbsp;·&nbsp; 번지 줄 탄성 계수 k = 200 N/m
-      &nbsp;·&nbsp; 줄 파단 한계 장력 T_max = 3,000 N
+      &nbsp;·&nbsp; 줄이 끊어지지 않는 최대 힘 T_max = 3,000 N
       &nbsp;·&nbsp; 점프대 높이 50 m
       &nbsp;·&nbsp; 공기 저항 무시
       <br>
       <b>실험 변인</b>
-      &nbsp;·&nbsp; 조작 변인: 낙하 높이(번지 줄 자연 길이) L₀
-      &nbsp;·&nbsp; 종속 변인: 줄 파단 여부, 최대 장력
+      &nbsp;·&nbsp; 조작 변인: 낙하 높이(번지 줄이 늘어나지 않았을 때의 길이) L₀
+      &nbsp;·&nbsp; 종속 변인: 줄 끊어짐 여부, 줄이 잡아당기는 힘의 최대치
       &nbsp;·&nbsp; 통제 변인: 탑승자 질량, 줄의 종류(k), 중력가속도
     </p>
   </div>
@@ -628,9 +628,9 @@
   function setResult(kind) {
     const map = {
       idle: { c: '', s: '·', t: '실험 준비 완료',
-        d: '왼쪽에서 <b>낙하 높이</b>를 선택하고 <b>실험 시작</b> 버튼을 누르세요. 낙하 높이가 클수록 줄이 늘어나기 시작할 때의 속도가 커지고, 줄이 흡수해야 할 에너지가 늘어 장력도 커집니다.' },
+        d: '왼쪽에서 <b>낙하 높이</b>를 선택하고 <b>실험 시작</b> 버튼을 누르세요. 낙하 높이가 클수록 줄이 늘어나기 시작할 때의 속도가 커지고, 줄이 흡수해야 할 에너지가 늘어 줄이 물체를 잡아당기는 힘도 커집니다.' },
       running: { c: '', s: '↓', t: '실험 진행 중',
-        d: '낙하 → 줄이 늘어나며 감속 → 최저점 도달 순으로 진행됩니다. 우측 측정판에서 <b>최대 장력</b>이 줄의 한계를 넘는지 관찰하세요.' },
+        d: '낙하 → 줄이 늘어나며 감속 → 최저점 도달 순으로 진행됩니다. 우측 측정판에서 <b>줄이 물체를 잡아당히는 힘의 최댓값</b>이 줄의 한계를 넘는지 관찰하세요.' },
     };
     const cfg = map[kind] || map.idle;
     els.resultStatus.className = 'result-status ' + cfg.c;
@@ -647,14 +647,14 @@
     if (state.broken) {
       els.resultStatus.className = 'result-status danger';
       els.resultStatus.textContent = 'X';
-      els.resultTitle.textContent = '줄 파단 — 실험 실패';
+      els.resultTitle.textContent = '줄 끊어짐 — 실험 실패';
       els.resultDetail.innerHTML =
         `낙하 높이 <b>${state.L0} m</b>에서 줄이 흡수해야 할 에너지가 한계를 초과했습니다.` +
         `<br>· 최대 속력 ≈ <b>${state.velMax.toFixed(1)} m/s</b>` +
         `<br>· 최대 운동에너지 ≈ <b>${Math.round(KE).toLocaleString()} J</b>` +
-        `<br>· 줄 파단 직전 장력 ≈ <b>${Math.round(T).toLocaleString()} N</b>` +
+        `<br>· 줄 끊어지기 직전 힘 ≈ <b>${Math.round(T).toLocaleString()} N</b>` +
         `<br><br>낙하 높이를 줄이거나, 더 굵고 강한 줄(높은 k 또는 높은 T_max)을 사용해 안전 마진을 확보해야 합니다.`;
-      setSafetyLabel('파단 — 위험', 'danger');
+      setSafetyLabel('끊어짐 — 위험', 'danger');
       return;
     }
 
@@ -665,7 +665,7 @@
       els.resultDetail.innerHTML =
         `낙하 높이 <b>${state.L0} m</b>에서 최대 속력 ≈ <b>${state.velMax.toFixed(1)} m/s</b>, ` +
         `최대 운동에너지 ≈ <b>${Math.round(KE).toLocaleString()} J</b>, ` +
-        `최대 장력 ≈ <b>${Math.round(T).toLocaleString()} N</b>으로 줄의 한계 ${PHYS.T_max} N 대비 안전 마진이 충분합니다.` +
+        `줄이 잡아당기는 힘의 최댓값 ≈ <b>${Math.round(T).toLocaleString()} N</b>으로 줄의 한계 ${PHYS.T_max} N 대비 안전 마진이 충분합니다.` +
         `<br>위치에너지가 운동에너지로, 다시 줄의 탄성에너지로 안전하게 전환되었습니다.`;
       setSafetyLabel('안전 — 통과', 'safe');
     } else if (ratio < 0.95) {
@@ -674,7 +674,7 @@
       els.resultTitle.textContent = '주의 필요';
       els.resultDetail.innerHTML =
         `낙하 높이 <b>${state.L0} m</b>에서 최대 속력 ≈ <b>${state.velMax.toFixed(1)} m/s</b>, ` +
-        `최대 장력 ≈ <b>${Math.round(T).toLocaleString()} N</b>으로 줄의 한계의 ${Math.round(ratio*100)}%에 도달했습니다. ` +
+        `줄이 잡아당기는 힘의 최댓값 ≈ <b>${Math.round(T).toLocaleString()} N</b>으로 줄의 한계의 ${Math.round(ratio*100)}%에 도달했습니다. ` +
         `이번에는 통과했지만 안전 여유가 부족합니다.`;
       setSafetyLabel('주의 — 여유 부족', 'warning');
     } else {
